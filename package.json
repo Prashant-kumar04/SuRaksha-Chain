@@ -12,7 +12,8 @@
     "lint": "tsc --noEmit",
     "testdata:create": "tsx scripts/generate-test-evidence.ts create",
     "testdata:verify": "tsx scripts/generate-test-evidence.ts verify",
-    "testdata:clean": "tsx scripts/generate-test-evidence.ts clean"
+    "testdata:clean": "tsx scripts/generate-test-evidence.ts clean",
+    "tc1:create": "tsx scripts/create-tc1-manual-dataset.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",
