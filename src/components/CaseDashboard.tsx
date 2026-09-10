@@ -14,6 +14,7 @@ import {
   Plus,
   X,
   Trash2,
+  Pencil,
 } from 'lucide-react';
 
 interface CaseDashboardProps {
@@ -49,6 +50,14 @@ export const CaseDashboard: React.FC<CaseDashboardProps> = ({
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editFirNumber, setEditFirNumber] = useState('');
+  const [editCaseTitle, setEditCaseTitle] = useState('');
+  const [editCaseCategory, setEditCaseCategory] = useState('GENERAL');
+  const [editJurisdiction, setEditJurisdiction] = useState('');
+  const [editStatus, setEditStatus] = useState('OPEN');
 
   const sealedCount = documents.filter((d) => d.sensitivity_tier === 'SEALED').length;
   const flaggedCount = documents.filter((d) => d.drift_flag === 1).length;
@@ -86,6 +95,39 @@ export const CaseDashboard: React.FC<CaseDashboardProps> = ({
       setCreateError(err.message || 'Failed to delete case.');
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const openEditModal = () => {
+    if (!currentCase) return;
+    setEditFirNumber(currentCase.fir_number);
+    setEditCaseTitle(currentCase.case_title);
+    setEditCaseCategory(currentCase.case_category);
+    setEditJurisdiction(currentCase.jurisdiction || '');
+    setEditStatus(currentCase.status || 'OPEN');
+    setEditError(null);
+    setShowEditModal(true);
+  };
+
+  const handleEditCase = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!currentCase) return;
+    setEditing(true);
+    setEditError(null);
+    try {
+      await api.updateCase(currentCase.case_id, {
+        fir_number: editFirNumber,
+        case_title: editCaseTitle,
+        case_category: editCaseCategory,
+        jurisdiction: editJurisdiction,
+        status: editStatus,
+      });
+      await onRefreshCases();
+      setShowEditModal(false);
+    } catch (err: any) {
+      setEditError(err.message || 'Failed to update case.');
+    } finally {
+      setEditing(false);
     }
   };
 
@@ -245,6 +287,16 @@ export const CaseDashboard: React.FC<CaseDashboardProps> = ({
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>{deleting ? 'Deleting...' : 'Delete Case'}</span>
+            </button>
+          )}
+          {currentCase && (currentUser.role === 'ADMIN' || (currentUser.role === 'IO' && currentCase.created_by === currentUser.user_id)) && (
+            <button
+              onClick={openEditModal}
+              title="Edit case details"
+              className="px-3 py-2 bg-white hover:bg-[#F7F6F3] border border-[#DDD9D1] text-[#0A2540] text-xs font-semibold rounded-[3px] flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              <span>Edit Case</span>
             </button>
           )}
           </div>
@@ -463,6 +515,62 @@ export const CaseDashboard: React.FC<CaseDashboardProps> = ({
                 >
                   {creating ? 'Registering...' : 'Register Case'}
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showEditModal && currentCase && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-white border border-[#DDD9D1] rounded-[4px] shadow-xl max-w-lg w-full p-6">
+            <div className="flex items-center justify-between pb-3 border-b border-[#DDD9D1] mb-4">
+              <div className="flex items-center gap-2">
+                <Pencil className="w-4 h-4 text-[#0A2540]" />
+                <h3 className="text-sm font-bold text-[#0A2540]">Edit Case Details</h3>
+              </div>
+              <button onClick={() => setShowEditModal(false)} className="text-[#5B5B5B] hover:text-[#232323] cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            {editError && <div className="mb-4 p-2.5 bg-[#FBEEEE] border border-[#8C1D2B]/30 rounded text-xs text-[#8C1D2B]">{editError}</div>}
+            <form onSubmit={handleEditCase} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-semibold text-[#232323] mb-1">FIR Number / Case Reference</label>
+                <input required value={editFirNumber} onChange={(event) => setEditFirNumber(event.target.value)} className="w-full px-3 py-2 text-sm border border-[#DDD9D1] rounded-[3px] focus:outline-none focus:border-[#0A2540]" />
+              </div>
+              <div>
+                <label className="block font-semibold text-[#232323] mb-1">Case Title</label>
+                <input required value={editCaseTitle} onChange={(event) => setEditCaseTitle(event.target.value)} className="w-full px-3 py-2 text-sm border border-[#DDD9D1] rounded-[3px] focus:outline-none focus:border-[#0A2540]" />
+              </div>
+              <div>
+                <label className="block font-semibold text-[#232323] mb-1">Category</label>
+                <select value={editCaseCategory} onChange={(event) => setEditCaseCategory(event.target.value)} className="w-full px-3 py-2 text-sm bg-white border border-[#DDD9D1] rounded-[3px] focus:outline-none focus:border-[#0A2540]">
+                  <option value="SENSITIVE_WOMEN_SAFETY">SENSITIVE_WOMEN_SAFETY</option>
+                  <option value="POCSO">POCSO</option>
+                  <option value="GENERAL">GENERAL</option>
+                  <option value="CYBERCRIME">CYBERCRIME</option>
+                  <option value="ECONOMIC_OFFENCES">ECONOMIC_OFFENCES</option>
+                  <option value="HOMICIDE">HOMICIDE</option>
+                </select>
+              </div>
+              <div>
+                <label className="block font-semibold text-[#232323] mb-1">Status</label>
+                <select value={editStatus} onChange={(event) => setEditStatus(event.target.value)} className="w-full px-3 py-2 text-sm bg-white border border-[#DDD9D1] rounded-[3px] focus:outline-none focus:border-[#0A2540]">
+                  <option value="OPEN">OPEN</option>
+                  <option value="UNDER_INVESTIGATION">UNDER_INVESTIGATION</option>
+                  <option value="CHARGESHEET_FILED">CHARGESHEET_FILED</option>
+                  <option value="IN_TRIAL">IN_TRIAL</option>
+                  <option value="CLOSED">CLOSED</option>
+                </select>
+              </div>
+              <div>
+                <label className="block font-semibold text-[#232323] mb-1">Jurisdiction / Bench</label>
+                <input value={editJurisdiction} onChange={(event) => setEditJurisdiction(event.target.value)} className="w-full px-3 py-2 text-sm border border-[#DDD9D1] rounded-[3px] focus:outline-none focus:border-[#0A2540]" />
+              </div>
+              <div className="pt-3 border-t border-[#DDD9D1] flex justify-end gap-2">
+                <button type="button" onClick={() => setShowEditModal(false)} className="px-3 py-1.5 border border-[#DDD9D1] rounded text-xs font-semibold text-[#5B5B5B] hover:bg-[#F7F6F3] cursor-pointer">Cancel</button>
+                <button type="submit" disabled={editing} className="px-4 py-1.5 bg-[#0A2540] hover:bg-[#123258] text-white rounded text-xs font-semibold cursor-pointer disabled:opacity-50">{editing ? 'Saving...' : 'Save Changes'}</button>
               </div>
             </form>
           </div>

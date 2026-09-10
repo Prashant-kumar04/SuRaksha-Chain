@@ -297,6 +297,25 @@ async function startServer() {
     res.json({ ok: true, case_id });
   });
 
+  app.patch('/api/cases/:id', requireAuth, (req: AuthRequest, res) => {
+    const case_id = req.params.id;
+    const kase = db.prepare('SELECT * FROM cases WHERE case_id = ?').get(case_id);
+    if (!kase) return res.status(404).json({ error: 'Case not found.' });
+    if (!['ADMIN', 'IO'].includes(req.user!.role) || (req.user!.role === 'IO' && kase.created_by !== req.user!.user_id)) {
+      return res.status(403).json({ error: 'Only Administrators or the case-owning IO may edit this case.' });
+    }
+
+    const { fir_number, case_title, case_category, jurisdiction, status } = req.body;
+    if (!fir_number || !case_title) return res.status(400).json({ error: 'FIR number and Case Title are required.' });
+    const duplicate = db.prepare('SELECT case_id FROM cases WHERE fir_number = ? AND case_id <> ?').get(fir_number, case_id);
+    if (duplicate) return res.status(409).json({ error: `Case with FIR number ${fir_number} already exists.` });
+
+    db.prepare(`UPDATE cases SET fir_number = ?, case_title = ?, case_category = ?, jurisdiction = ?, status = ? WHERE case_id = ?`)
+      .run(fir_number, case_title, case_category || 'GENERAL', jurisdiction || null, status || kase.status, case_id);
+    writeAudit({ actor_id: req.user!.user_id, action: 'CASE_UPDATED', case_id, detail: `Updated case FIR: ${fir_number} — ${case_title}` });
+    res.json({ ok: true, case_id });
+  });
+
   app.post('/api/cases/:id/assignments', requireAuth, (req: AuthRequest, res) => {
     const case_id = req.params.id;
     const kase = db.prepare('SELECT * FROM cases WHERE case_id = ?').get(case_id);
@@ -317,9 +336,10 @@ async function startServer() {
     const targetUser = db.prepare('SELECT 1 FROM users WHERE user_id = ? AND is_active = 1').get(user_id);
     if (!targetUser) return res.status(404).json({ error: 'Target user does not exist.' });
 
+    const assignmentId = randomUUID();
     try {
       db.prepare(`INSERT INTO case_assignments (assignment_id, case_id, user_id, access_level) VALUES (?,?,?,?)`)
-        .run(randomUUID(), case_id, user_id, access_level || 'READ');
+        .run(assignmentId, case_id, user_id, access_level || 'READ');
     } catch {
       return res.status(409).json({ error: 'User is already assigned to this case.' });
     }
@@ -331,7 +351,7 @@ async function startServer() {
       detail: `Assigned user ${user_id} with access ${access_level || 'READ'}`,
     });
 
-    res.json({ ok: true });
+    res.json({ ok: true, assignment_id: assignmentId });
   });
 
   app.get('/api/cases/:id/assignments', requireAuth, (req: AuthRequest, res) => {
@@ -350,6 +370,35 @@ async function startServer() {
       ORDER BY ca.assigned_at ASC, ca.rowid ASC
     `).all(case_id);
     res.json(assignments);
+  });
+
+  app.patch('/api/cases/:id/assignments/:assignmentId', requireAuth, (req: AuthRequest, res) => {
+    const case_id = req.params.id;
+    const kase = db.prepare('SELECT created_by FROM cases WHERE case_id = ?').get(case_id);
+    if (!kase) return res.status(404).json({ error: 'Case not found.' });
+    const isManager = req.user!.role === 'ADMIN' || (req.user!.role === 'IO' && kase.created_by === req.user!.user_id);
+    if (!isManager) return res.status(403).json({ error: 'Only Administrators or the case-owning IO may modify assignments.' });
+    const { access_level } = req.body;
+    if (!['READ', 'WRITE'].includes(access_level)) return res.status(400).json({ error: 'access_level must be READ or WRITE.' });
+    const assignment = db.prepare('SELECT user_id FROM case_assignments WHERE assignment_id = ? AND case_id = ?').get(req.params.assignmentId, case_id);
+    if (!assignment) return res.status(404).json({ error: 'Assignment not found.' });
+    db.prepare('UPDATE case_assignments SET access_level = ? WHERE assignment_id = ?').run(access_level, req.params.assignmentId);
+    writeAudit({ actor_id: req.user!.user_id, action: 'CASE_ASSIGNMENT_UPDATED', case_id, detail: `Updated user ${assignment.user_id} access to ${access_level}` });
+    res.json({ ok: true });
+  });
+
+  app.delete('/api/cases/:id/assignments/:assignmentId', requireAuth, (req: AuthRequest, res) => {
+    const case_id = req.params.id;
+    const kase = db.prepare('SELECT created_by FROM cases WHERE case_id = ?').get(case_id);
+    if (!kase) return res.status(404).json({ error: 'Case not found.' });
+    const isManager = req.user!.role === 'ADMIN' || (req.user!.role === 'IO' && kase.created_by === req.user!.user_id);
+    if (!isManager) return res.status(403).json({ error: 'Only Administrators or the case-owning IO may modify assignments.' });
+    const assignment = db.prepare('SELECT user_id FROM case_assignments WHERE assignment_id = ? AND case_id = ?').get(req.params.assignmentId, case_id);
+    if (!assignment) return res.status(404).json({ error: 'Assignment not found.' });
+    if (assignment.user_id === kase.created_by) return res.status(400).json({ error: 'The case owner cannot be removed from the case.' });
+    db.prepare('DELETE FROM case_assignments WHERE assignment_id = ?').run(req.params.assignmentId);
+    writeAudit({ actor_id: req.user!.user_id, action: 'CASE_ASSIGNMENT_REMOVED', case_id, detail: `Removed user ${assignment.user_id} from case` });
+    res.json({ ok: true });
   });
 
   app.delete('/api/cases/:id', requireAuth, requireRole('ADMIN'), (req: AuthRequest, res) => {

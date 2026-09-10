@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { User } from '../types';
 import { api } from '../api';
-import { KeyRound, UserPlus } from 'lucide-react';
+import { KeyRound, UserPlus, Trash2 } from 'lucide-react';
 
 interface CaseAccessManagerProps {
   caseId: string;
@@ -10,6 +10,7 @@ interface CaseAccessManagerProps {
 }
 
 interface LocalAssignment {
+  assignmentId: string;
   userId: string;
   userName: string;
   accessLevel: 'READ' | 'WRITE';
@@ -44,6 +45,7 @@ export const CaseAccessManager: React.FC<CaseAccessManagerProps> = ({ caseId, ca
     ])
       .then(([existingAssignments, availableUsers]) => {
         setAssignments(existingAssignments.map((assignment) => ({
+          assignmentId: assignment.assignment_id,
           userId: assignment.user_id,
           userName: assignment.name,
           accessLevel: assignment.access_level,
@@ -73,11 +75,12 @@ export const CaseAccessManager: React.FC<CaseAccessManagerProps> = ({ caseId, ca
 
     setSubmitting(true);
     try {
-      await api.assignUserToCase(caseId, targetUserId, accessLevel);
+      const result = await api.assignUserToCase(caseId, targetUserId, accessLevel);
       const selectedUser = users.find((user) => user.user_id === targetUserId);
       setAssignments((current) => [
         ...current.filter((assignment) => assignment.userId !== targetUserId),
         {
+          assignmentId: result.assignment_id,
           userId: targetUserId,
           userName: selectedUser?.name || targetUserId,
           accessLevel,
@@ -89,6 +92,29 @@ export const CaseAccessManager: React.FC<CaseAccessManagerProps> = ({ caseId, ca
       setError(err.message || 'Failed to assign case access.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleAccessChange = async (assignment: LocalAssignment, nextAccess: 'READ' | 'WRITE') => {
+    setError(null);
+    try {
+      await api.updateCaseAssignment(caseId, assignment.assignmentId, nextAccess);
+      setAssignments((current) => current.map((item) => item.userId === assignment.userId ? { ...item, accessLevel: nextAccess } : item));
+      setNotice(`${assignment.userName} now has ${nextAccess} access.`);
+    } catch (err: any) {
+      setError(err.message || 'Failed to update case access.');
+    }
+  };
+
+  const handleRemove = async (assignment: LocalAssignment) => {
+    if (!window.confirm(`Remove ${assignment.userName} from this case?`)) return;
+    setError(null);
+    try {
+      await api.removeCaseAssignment(caseId, assignment.assignmentId);
+      setAssignments((current) => current.filter((item) => item.userId !== assignment.userId));
+      setNotice(`${assignment.userName} was removed from this case.`);
+    } catch (err: any) {
+      setError(err.message || 'Failed to remove case access.');
     }
   };
 
@@ -176,7 +202,24 @@ export const CaseAccessManager: React.FC<CaseAccessManagerProps> = ({ caseId, ca
               {assignments.map((assignment) => (
                 <li key={assignment.userId} className="py-2 flex items-center justify-between gap-3 text-xs">
                   <span className="font-semibold text-[#0A2540]">{assignment.userName}</span>
-                  <span className="font-mono text-[10px] px-2 py-0.5 bg-[#EEF1F5] text-[#123258] rounded-[2px]">{assignment.accessLevel}</span>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={assignment.accessLevel}
+                      onChange={(event) => handleAccessChange(assignment, event.target.value as 'READ' | 'WRITE')}
+                      className="font-mono text-[10px] px-2 py-1 bg-[#EEF1F5] text-[#123258] rounded-[2px] border border-[#DDD9D1]"
+                    >
+                      <option value="READ">READ</option>
+                      <option value="WRITE">WRITE</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => handleRemove(assignment)}
+                      title={`Remove ${assignment.userName}`}
+                      className="p-1 text-[#8C1D2B] hover:bg-[#FBEEEE] rounded-[2px] cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>

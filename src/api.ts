@@ -159,8 +159,21 @@ export const api = {
     });
   },
 
-  async assignUserToCase(caseId: string, userId: string, accessLevel = 'READ'): Promise<{ ok: boolean }> {
-    return request<{ ok: boolean }>(`/cases/${caseId}/assignments`, {
+  async updateCase(caseId: string, caseData: {
+    fir_number: string;
+    case_title: string;
+    case_category: string;
+    jurisdiction?: string;
+    status?: string;
+  }): Promise<{ ok: boolean; case_id: string }> {
+    return request<{ ok: boolean; case_id: string }>(`/cases/${caseId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(caseData),
+    });
+  },
+
+  async assignUserToCase(caseId: string, userId: string, accessLevel = 'READ'): Promise<{ ok: boolean; assignment_id: string }> {
+    return request<{ ok: boolean; assignment_id: string }>(`/cases/${caseId}/assignments`, {
       method: 'POST',
       body: JSON.stringify({ user_id: userId, access_level: accessLevel }),
     });
@@ -177,6 +190,17 @@ export const api = {
     role: string;
   }>> {
     return request(`/cases/${caseId}/assignments`);
+  },
+
+  async updateCaseAssignment(caseId: string, assignmentId: string, accessLevel: 'READ' | 'WRITE'): Promise<{ ok: boolean }> {
+    return request<{ ok: boolean }>(`/cases/${caseId}/assignments/${assignmentId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ access_level: accessLevel }),
+    });
+  },
+
+  async removeCaseAssignment(caseId: string, assignmentId: string): Promise<{ ok: boolean }> {
+    return request<{ ok: boolean }>(`/cases/${caseId}/assignments/${assignmentId}`, { method: 'DELETE' });
   },
 
   async getCaseDocuments(caseId: string): Promise<CaseDocument[]> {
