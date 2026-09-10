@@ -1,6 +1,6 @@
 # Role Test Cases TC1-TC5
 
-These fixtures are created automatically at application startup when `ENABLE_TC1_DATASET=true`. They use real SQLite records and real files under the configured data directory. Render stores them on its persistent disk under `/var/data`.
+These fixtures are created only when an operator explicitly runs the test-data creation script. Application startup does not create demo cases, documents, or related records. Render stores any explicitly created test data on its persistent disk under `/var/data`.
 
 ## TC1 - Role-Wise Tamper Test
 

@@ -13,6 +13,7 @@ import {
   Binary,
   Plus,
   X,
+  Trash2,
 } from 'lucide-react';
 
 interface CaseDashboardProps {
@@ -47,6 +48,7 @@ export const CaseDashboard: React.FC<CaseDashboardProps> = ({
   const [jurisdiction, setJurisdiction] = useState(currentUser.jurisdiction || 'District East');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const sealedCount = documents.filter((d) => d.sensitivity_tier === 'SEALED').length;
   const flaggedCount = documents.filter((d) => d.drift_flag === 1).length;
@@ -70,6 +72,20 @@ export const CaseDashboard: React.FC<CaseDashboardProps> = ({
       setCreateError(err.message || 'Failed to create case in database.');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleDeleteCase = async () => {
+    if (!currentCase || currentUser.role !== 'ADMIN') return;
+    if (!window.confirm(`Permanently delete case ${currentCase.fir_number} and all of its documents, notes, assignments, and audit entries?`)) return;
+    setDeleting(true);
+    try {
+      await api.deleteCase(currentCase.case_id);
+      await onRefreshCases();
+    } catch (err: any) {
+      setCreateError(err.message || 'Failed to delete case.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -220,6 +236,17 @@ export const CaseDashboard: React.FC<CaseDashboardProps> = ({
               <Plus className="w-3.5 h-3.5" />
               <span>Upload First Document</span>
             </button>
+          {currentCase && currentUser.role === 'ADMIN' && (
+            <button
+              onClick={handleDeleteCase}
+              disabled={deleting}
+              title="Permanently delete this case and its records"
+              className="px-3 py-2 bg-white hover:bg-[#FBEEEE] border border-[#8C1D2B]/40 text-[#8C1D2B] text-xs font-semibold rounded-[3px] flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>{deleting ? 'Deleting...' : 'Delete Case'}</span>
+            </button>
+          )}
           </div>
         ) : (
           <div className="overflow-x-auto">

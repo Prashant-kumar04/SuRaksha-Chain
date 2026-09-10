@@ -153,6 +153,12 @@ export const api = {
     });
   },
 
+  async deleteCase(caseId: string): Promise<{ ok: boolean; case_id: string; fir_number: string }> {
+    return request<{ ok: boolean; case_id: string; fir_number: string }>(`/cases/${caseId}`, {
+      method: 'DELETE',
+    });
+  },
+
   async assignUserToCase(caseId: string, userId: string, accessLevel = 'READ'): Promise<{ ok: boolean }> {
     return request<{ ok: boolean }>(`/cases/${caseId}/assignments`, {
       method: 'POST',

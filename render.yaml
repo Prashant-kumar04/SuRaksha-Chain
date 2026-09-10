@@ -25,9 +25,5 @@ services:
         generateValue: true
       - key: BOOTSTRAP_PASSWORD
         sync: false
-      - key: ENABLE_SEED_DATA
-        value: "true"
       - key: ENABLE_TAMPER_TESTS
         value: "false"
-      - key: ENABLE_TC1_DATASET
-        value: "true"

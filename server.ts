@@ -14,7 +14,6 @@ import { hashBuffer, chainHash } from './server/utils/hash';
 import { extractText, compareVersions } from './server/utils/drift';
 import { requireAuth, requireRole, JWT_SECRET, AuthRequest } from './server/middleware/auth';
 import { seedDatabase } from './server/seed';
-import { ensureTc1Dataset, ensureAdditionalRoleDatasets } from './server/tc1';
 
 const VALID_ROLES = ['IO', 'FORENSIC_EXPERT', 'PROSECUTOR', 'COURT_OFFICER', 'ADMIN'];
 const VALID_DOC_TYPES = ['FIR', 'WITNESS_STATEMENT', 'CHARGESHEET', 'FORENSIC_REPORT', 'COURT_FILING', 'EVIDENCE_RECORD', 'SEIZURE_MEMO', 'LEGAL_NOTICE'];
@@ -53,8 +52,6 @@ async function startServer() {
   // Initialize DB and Seed
   const db: BetterSqliteWrapper = await initDatabase();
   await seedDatabase(db);
-  ensureTc1Dataset(db);
-  ensureAdditionalRoleDatasets(db);
 
   const upload = multer({
     storage: multer.memoryStorage(),
@@ -332,6 +329,38 @@ async function startServer() {
     });
 
     res.json({ ok: true });
+  });
+
+  app.delete('/api/cases/:id', requireAuth, requireRole('ADMIN'), (req: AuthRequest, res) => {
+    const case_id = req.params.id;
+    const kase = db.prepare('SELECT case_id, fir_number FROM cases WHERE case_id = ?').get(case_id);
+    if (!kase) return res.status(404).json({ error: 'Case not found.' });
+
+    const documents = db.prepare('SELECT document_id FROM documents WHERE case_id = ?').all(case_id);
+    const documentIds = documents.map((document) => document.document_id);
+    if (documentIds.length) {
+      const placeholders = documentIds.map(() => '?').join(',');
+      const versions = db.prepare(`SELECT file_path FROM document_versions WHERE document_id IN (${placeholders})`).all(documentIds);
+      for (const version of versions) {
+        fs.rmSync(resolveSafeUploadPath(uploadsDir, version.file_path), { force: true });
+      }
+      db.prepare(`DELETE FROM document_versions WHERE document_id IN (${placeholders})`).run(documentIds);
+      db.prepare(`DELETE FROM unseal_requests WHERE document_id IN (${placeholders})`).run(documentIds);
+      db.prepare(`DELETE FROM documents WHERE document_id IN (${placeholders})`).run(documentIds);
+    }
+
+    db.prepare('DELETE FROM case_notes WHERE case_id = ?').run(case_id);
+    db.prepare('DELETE FROM victim_records WHERE case_id = ?').run(case_id);
+    db.prepare('DELETE FROM case_assignments WHERE case_id = ?').run(case_id);
+    writeAudit({
+      actor_id: req.user!.user_id,
+      action: 'CASE_DELETED',
+      case_id,
+      detail: `Deleted case FIR: ${kase.fir_number}`,
+    });
+    db.prepare('DELETE FROM cases WHERE case_id = ?').run(case_id);
+
+    res.json({ ok: true, case_id, fir_number: kase.fir_number });
   });
 
   app.get('/api/cases/:id/documents', requireAuth, (req: AuthRequest, res) => {
