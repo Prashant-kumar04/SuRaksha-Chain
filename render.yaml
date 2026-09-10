@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: suraksha-chain
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    disk:
+      name: suraksha-chain-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: DATA_DIR
+        value: /var/data
+      - key: APP_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: BOOTSTRAP_PASSWORD
+        sync: false
+      - key: ENABLE_SEED_DATA
+        value: "true"
+      - key: ENABLE_TAMPER_TESTS
+        value: "false"

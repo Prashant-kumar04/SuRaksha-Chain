@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SuRakSha Chain — Case Document Registry</title>
+  <meta name="description" content="Judicially-gated chain-of-custody and document integrity platform for legal and investigation records (SIH26190)." />
+  <meta property="og:title" content="SuRakSha Chain — Case Document Registry" />
+  <meta property="og:description" content="Judicially-gated chain-of-custody and document integrity platform for legal and investigation records (SIH26190)." />
+  <script>
+    // Suppress benign Vite dev-server WebSocket errors in sandboxed iframe environment
+    window.addEventListener('unhandledrejection', function(event) {
+      var reason = event && event.reason;
+      var msg = (reason && (reason.message || reason.stack || reason)) ? String(reason.message || reason) : '';
+      if (msg.includes('WebSocket') || msg.includes('vite')) {
+        event.preventDefault();
+      }
+    });
+    window.addEventListener('error', function(event) {
+      var msg = (event && (event.message || event.error)) ? String(event.message || event.error) : '';
+      if (msg.includes('WebSocket') || msg.includes('[vite]')) {
+        event.preventDefault();
+      }
+    });
+  </script>
+</head>
+<body class="bg-[#F7F6F3] text-[#232323] antialiased">
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+[build]
+  command = "npm run build:client"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # IMPORTANT: Set VITE_API_URL in the Netlify dashboard to your Render backend URL
+  # Example: https://suraksha-chain.onrender.com
+  # Go to: Site Settings → Environment Variables → Add variable
+  VITE_API_URL = ""
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

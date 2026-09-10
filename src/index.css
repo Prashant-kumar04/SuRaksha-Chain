@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+:root {
+  --navy: #0A2540;
+  --navy-light: #123258;
+  --paper: #F7F6F3;
+  --paper-card: #FFFFFF;
+  --maroon: #8C1D2B;
+  --maroon-bg: #FBEEEE;
+  --green: #1F6F4A;
+  --green-bg: #EAF3EE;
+  --gold: #C9A227;
+  --ink: #232323;
+  --ink-soft: #5B5B5B;
+  --line: #DDD9D1;
+  --line-soft: #E9E6DF;
+}
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: var(--paper);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6, .font-heading {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+
+code, pre, .font-mono-code, .mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+
+/* Custom scrollbar for clean dossier tables */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--paper);
+}
+::-webkit-scrollbar-thumb {
+  background: #c7c3b9;
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a9a499;
+}

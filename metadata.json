@@ -1,0 +1,6 @@
+{
+  "name": "SuRakSha Chain",
+  "description": "Judicially-gated chain-of-custody and document integrity platform for legal and investigation records (SIH26190).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["SERVER_SIDE_DOCUMENT_INTEGRITY", "HASH_CHAINED_AUDIT_LEDGER"]
+}
