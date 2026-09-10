@@ -5,16 +5,11 @@ import { BetterSqliteWrapper } from './db';
 import { chainHash, hashBuffer } from './utils/hash';
 import { compareVersions, extractText } from './utils/drift';
 
-const CASE_FIR = 'TC1-MANUAL-TAMPER-DRIFT';
-const CASE_TITLE = 'TC1 — Tamper & Drift Verification Case';
+const CASE_FIR = 'TC1-ROLE-WISE-VERIFICATION';
+const LEGACY_CASE_FIRS = ['TC1-MANUAL-TAMPER-DRIFT', 'TEST-DATA-TC1-CYBER-FRAUD'];
+const CASE_TITLE = 'TC1';
 const CATEGORY = 'SENSITIVE_WOMEN_SAFETY';
-const tamperContent = 'Forensic Report Reference ID: TC1-FR-001\nDNA Match Probability: 0.02%\nConclusion: Sample excluded from match.';
-const chainContents = [
-  'Witness statement: Suspect wore a blue jacket.',
-  'Witness statement: Suspect wore a dark blue jacket.',
-  'Witness statement: Suspect wore a red jacket and carried a bag.',
-];
-const sealedContent = 'Medical examination record — restricted.';
+const tamperContent = 'DNA Match Probability: 0.02%. Conclusion: Sample excluded from match.';
 
 function findUser(db: BetterSqliteWrapper, role: string): any {
   const found = db.prepare('SELECT user_id, name, email FROM users WHERE role = ? AND is_active = 1 LIMIT 1').get(role);
@@ -61,32 +56,54 @@ function addDocument(db: BetterSqliteWrapper, uploadsDir: string, caseId: string
 
 export function ensureTc1Dataset(db: BetterSqliteWrapper): void {
   if (process.env.ENABLE_TC1_DATASET !== 'true') return;
-  const existing = db.prepare('SELECT case_id FROM cases WHERE fir_number = ?').get(CASE_FIR);
+  const uploadsDir = path.join(process.env.DATA_DIR || process.cwd(), 'uploads');
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  const existing = db.prepare(`SELECT case_id, fir_number FROM cases WHERE fir_number = ? OR fir_number IN (${LEGACY_CASE_FIRS.map(() => '?').join(',')}) LIMIT 1`).get(CASE_FIR, ...LEGACY_CASE_FIRS);
   if (existing) {
-    console.log(`[TC1] Dataset already exists: ${existing.case_id}`);
+    const documentSummary = db.prepare(`SELECT COUNT(*) AS count, MAX(title) AS title FROM documents WHERE case_id = ?`).get(existing.case_id);
+    if (existing.fir_number === CASE_FIR && documentSummary.count === 1 && documentSummary.title === 'TC1_TAMPER_TEST.txt') {
+      console.log(`[TC1] Dataset already exists: ${existing.case_id}`);
+      return;
+    }
+    const documents = db.prepare('SELECT document_id FROM documents WHERE case_id = ?').all(existing.case_id);
+    for (const document of documents) {
+      const versions = db.prepare('SELECT file_path FROM document_versions WHERE document_id = ?').all(document.document_id);
+      for (const version of versions) fs.rmSync(path.join(process.env.DATA_DIR || process.cwd(), 'uploads', version.file_path), { force: true });
+      db.prepare('DELETE FROM document_versions WHERE document_id = ?').run(document.document_id);
+      db.prepare('DELETE FROM unseal_requests WHERE document_id = ?').run(document.document_id);
+    }
+    db.prepare('DELETE FROM documents WHERE case_id = ?').run(existing.case_id);
+    db.prepare('DELETE FROM victim_records WHERE case_id = ?').run(existing.case_id);
+    db.prepare('DELETE FROM case_assignments WHERE case_id = ?').run(existing.case_id);
+    db.prepare('UPDATE cases SET fir_number = ?, case_title = ?, case_category = ?, status = ?, created_by = ?, jurisdiction = ? WHERE case_id = ?')
+      .run(CASE_FIR, CASE_TITLE, CATEGORY, 'UNDER_INVESTIGATION', findUser(db, 'IO').user_id, 'TC1 TEST JURISDICTION', existing.case_id);
+    console.log(`[TC1] Replaced the previous TC1 fixture in place: ${existing.case_id}`);
+    createFixtureRecords(db, uploadsDir, existing.case_id);
     return;
   }
 
-  const uploadsDir = path.join(process.env.DATA_DIR || process.cwd(), 'uploads');
-  fs.mkdirSync(uploadsDir, { recursive: true });
+  const caseId = randomUUID();
+  const io = findUser(db, 'IO');
+  db.prepare('INSERT INTO cases (case_id, fir_number, case_title, case_category, status, created_by, jurisdiction) VALUES (?,?,?,?,?,?,?)')
+    .run(caseId, CASE_FIR, CASE_TITLE, CATEGORY, 'UNDER_INVESTIGATION', io.user_id, 'TC1 TEST JURISDICTION');
+
+  createFixtureRecords(db, uploadsDir, caseId);
+}
+
+function createFixtureRecords(db: BetterSqliteWrapper, uploadsDir: string, caseId: string): void {
   const admin = findUser(db, 'ADMIN');
   const io = findUser(db, 'IO');
   const forensic = findUser(db, 'FORENSIC_EXPERT');
   const prosecutor = findUser(db, 'PROSECUTOR');
-  const caseId = randomUUID();
 
-  db.prepare('INSERT INTO cases (case_id, fir_number, case_title, case_category, status, created_by, jurisdiction) VALUES (?,?,?,?,?,?,?)')
-    .run(caseId, CASE_FIR, CASE_TITLE, CATEGORY, 'UNDER_INVESTIGATION', io.user_id, 'TC1 TEST JURISDICTION');
   writeAudit(db, io.user_id, 'CASE_CREATED', caseId, null, CASE_TITLE);
-  for (const [assignedUser, access] of [[io, 'WRITE'], [forensic, 'READ'], [prosecutor, 'READ']] as const) {
+  for (const [assignedUser, access] of [[io, 'WRITE'], [forensic, 'WRITE'], [prosecutor, 'READ']] as const) {
     db.prepare('INSERT INTO case_assignments (assignment_id, case_id, user_id, access_level) VALUES (?,?,?,?)')
       .run(randomUUID(), caseId, assignedUser.user_id, access);
     writeAudit(db, admin.user_id, 'CASE_ASSIGNED', caseId, null, `${assignedUser.email} assigned ${access}`);
   }
 
   addDocument(db, uploadsDir, caseId, io.user_id, 'TC1_TAMPER_TEST.txt', 'FORENSIC_REPORT', 'STANDARD', [tamperContent]);
-  addDocument(db, uploadsDir, caseId, io.user_id, 'TC1_VERSION_CHAIN.txt', 'WITNESS_STATEMENT', 'STANDARD', chainContents);
-  addDocument(db, uploadsDir, caseId, io.user_id, 'TC1_SEALED_RECORD.txt', 'EVIDENCE_RECORD', 'SEALED', [sealedContent]);
   db.prepare('INSERT INTO victim_records (record_id, case_id, victim_name, address, contact_number, photo_ref, case_summary) VALUES (?,?,?,?,?,?,?)')
     .run(randomUUID(), caseId, 'Test Victim', '123 Test Lane, Test District', '+91-90000-00000', null, 'TC1 fictional victim record for redaction verification.');
   writeAudit(db, io.user_id, 'VICTIM_RECORD_SAVED', caseId, null, 'TC1 victim record created for manual redaction verification');

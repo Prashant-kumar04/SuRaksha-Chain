@@ -1,102 +1,97 @@
-# TEST-CASES.md
+# TC1 Role-Wise Verification
 
-## TC1 — Tamper & Drift Verification Case
+The Render startup fixture creates exactly one physical evidence file for this case. It is created by the application initializer with `ENABLE_TC1_DATASET=true` and is not tampered with or pre-flagged.
 
-Fictional manual verification dataset. Created: 2026-09-10T05:29:04.273Z
-The files below are real files on disk. Hashes were computed from their original bytes at creation time. The tamper file was not modified or pre-flagged.
+- Case FIR: `TC1-ROLE-WISE-VERIFICATION`
+- Case title: `TC1`
+- Category: `SENSITIVE_WOMEN_SAFETY`
+- IO: `io@suraksha.gov.in` with WRITE access
+- Forensic Expert: `forensic@suraksha.gov.in` with WRITE access for forensic report versions
+- Prosecutor: `prosecutor@suraksha.gov.in` with READ access
+- Court Officer and Admin: normal elevated role access
 
-- Case ID: f4bbf83d-0986-4926-99f1-3fb63525b098
-- FIR number: TC1-MANUAL-TAMPER-DRIFT
-- Case title: TC1 — Tamper & Drift Verification Case
-- Category: SENSITIVE_WOMEN_SAFETY
-- IO assignment: io@suraksha.gov.in (WRITE)
-- READ assignments: forensic@suraksha.gov.in, prosecutor@suraksha.gov.in
-- Court Officer and Admin use normal elevated role access; no special grants were created.
+## Physical File
 
-## Physical Files and Baseline Hashes
+Filename: `TC1_TAMPER_TEST.txt`
 
-| Test File | Real disk path | Document ID | Original SHA-256 |
-|---|---|---|---|
-| TC1_TAMPER_TEST.txt | C:\Users\acer\Downloads\suraksha-chain\uploads\1da2f681-1af2-4edc-bcc6-cc9fa9799ac9_TC1_TAMPER_TEST.txt | 3d48e3eb-b6f9-4e01-a311-11a03ecd7225 | e903a7b1b386e21463d5ebd21c37bb1665f80875fbc5116fac45f38196654e90 |
-| TC1_VERSION_CHAIN.txt v1 | C:\Users\acer\Downloads\suraksha-chain\uploads\89ba7052-eb47-4976-816a-9a5a27611284_TC1_VERSION_CHAIN.txt | 5cbd6d4a-046f-4b82-9107-accdad57ebd4 | 79e457b646db1e2dda37c8109354395b6d97c163a3cbecc9411784220b3e5779 |
-| TC1_VERSION_CHAIN.txt v2 | C:\Users\acer\Downloads\suraksha-chain\uploads\63ef3797-2996-40e2-9aba-985134c58440_TC1_VERSION_CHAIN.txt | 5cbd6d4a-046f-4b82-9107-accdad57ebd4 | 4fc9d7cc4138a2f634ff2d72da278350a78ab3078b694a4eb484f1e0653fd4c0 |
-| TC1_VERSION_CHAIN.txt v3 | C:\Users\acer\Downloads\suraksha-chain\uploads\a9657c21-1d9d-4436-a7a9-5a10f7e2e8a2_TC1_VERSION_CHAIN.txt | 5cbd6d4a-046f-4b82-9107-accdad57ebd4 | fcccc739bd9fba85ab9620bbb39f43c03c520a204bf66b4ab7e80c716fecefd5 |
-| TC1_SEALED_RECORD.txt | C:\Users\acer\Downloads\suraksha-chain\uploads\587cce6b-a525-4677-89c0-b8586d58e0a9_TC1_SEALED_RECORD.txt | 563d6904-8a20-4d43-a32a-dc14c1f9a621 | cb1427e82dfc2e633f6ab20cc6dfdb045682b1df9983af69efb49fa7fa5cdcb1 |
+Exact original content, with no trailing newline:
 
-Database upload paths are relative to uploads/. The absolute paths above are the files to open.
+```text
+DNA Match Probability: 0.02%. Conclusion: Sample excluded from match.
+```
 
-### Exact Original Content
+Local verification path used for the real API test:
 
-#### TC1_TAMPER_TEST.txt
+`C:\Users\acer\Downloads\suraksha-chain\.role-test-data\uploads\dc4c67b8-0002-4aff-833c-0891dae35160_TC1_TAMPER_TEST.txt`
 
-Forensic Report Reference ID: TC1-FR-001
-DNA Match Probability: 0.02%
-Conclusion: Sample excluded from match.
+Local SHA-256 baseline:
 
-#### TC1_VERSION_CHAIN.txt
+`4fb462f11d5dc6514d52de2d10c1a492215f9137884675527ff11b0aa46684ef`
 
-v1: Witness statement: Suspect wore a blue jacket.
-v2: Witness statement: Suspect wore a dark blue jacket.
-v3: Witness statement: Suspect wore a red jacket and carried a bag.
+On Render, the physical path will be under the persistent disk:
 
-#### TC1_SEALED_RECORD.txt
+`/var/data/uploads/<generated-version-id>_TC1_TAMPER_TEST.txt`
 
-Medical examination record — restricted.
+The Render startup log prints the generated case ID and uploads directory. The stored hash is the baseline to compare after manual editing.
 
-## Manual Test Table
+## Required Role Table
 
-| Test File | What to do | Who does it | Expected result |
-|---|---|---|---|
-| TC1_TAMPER_TEST.txt | Open the physical file, change exactly one character (for example 0.02% to 0.03%), save without using the app, then run Verify File. Do not alter it before the baseline test. | Any assigned role | Stored hash remains e903a7b1b386e21463d5ebd21c37bb1665f80875fbc5116fac45f38196654e90; actual hash differs; integrity FAIL / tamper flagged. |
-| TC1_VERSION_CHAIN.txt v1->v2 | Compare v1 with v2 in Version Drift Check. | Any assigned role | No drift flag. |
-| TC1_VERSION_CHAIN.txt v2->v3 | Compare v2 with v3. | Any assigned role | DRIFT FLAG for meaningful change. |
-| TC1_SEALED_RECORD.txt before order | Try to access/download before an approved order exists. | IO | HTTP 403; sealed content blocked. |
-| TC1_SEALED_RECORD.txt after order | IO submits request; Court Officer attaches a fictional order and approves it; IO retries. | IO, then Court Officer | IO can access after approval. |
-| TC1_SEALED_RECORD.txt unauthorized approval | Attempt attach/approve as Forensic Expert or Prosecutor. | Forensic Expert or Prosecutor | HTTP 403; court-only action blocked server-side. |
-| TC1_VICTIM_RECORD | View the record. | IO, Forensic Expert, Prosecutor | Name, address, and contact are REDACTED. |
-| TC1_VICTIM_RECORD | View the record. | Court Officer, Admin | UNREDACTED full record. |
-
-## Version Chain Records
-
-| Version | Stored physical file | SHA-256 | Expected drift |
-|---|---|---|---|
-| v1 | C:\Users\acer\Downloads\suraksha-chain\uploads\89ba7052-eb47-4976-816a-9a5a27611284_TC1_VERSION_CHAIN.txt | 79e457b646db1e2dda37c8109354395b6d97c163a3cbecc9411784220b3e5779 | Baseline |
-| v2 | C:\Users\acer\Downloads\suraksha-chain\uploads\63ef3797-2996-40e2-9aba-985134c58440_TC1_VERSION_CHAIN.txt | 4fc9d7cc4138a2f634ff2d72da278350a78ab3078b694a4eb484f1e0653fd4c0 | Minor wording change; expected no drift |
-| v3 | C:\Users\acer\Downloads\suraksha-chain\uploads\a9657c21-1d9d-4436-a7a9-5a10f7e2e8a2_TC1_VERSION_CHAIN.txt | fcccc739bd9fba85ab9620bbb39f43c03c520a204bf66b4ab7e80c716fecefd5 | Meaningful change; expected drift flag |
-
-## Victim Record
-
-Database record linked to case f4bbf83d-0986-4926-99f1-3fb63525b098:
-victim_name: Test Victim
-address: 123 Test Lane, Test District
-contact_number: +91-90000-00000
-
-## Role Hierarchy Walk-through
-
-| Role | Buttons/pages expected | Direct requests blocked |
+| Role | Should be ALLOWED to | Should be BLOCKED from |
 |---|---|---|
-| IO | Case Dossier, Document Upload, Version Drift Check, Physical File Integrity, Judicial Authorization Workflow, Sec 228A IPC Victim Record | Upload/version without WRITE; audit log and Officer Directory; court-order attach/approve. |
-| Forensic Expert | Case Dossier, Document Upload, Version Drift Check, Physical File Integrity, Judicial Authorization Workflow, Sec 228A IPC Victim Record | Upload/version without WRITE; court-order attach/approve; audit log and Officer Directory; victim-record POST. |
-| Prosecutor | Case Dossier, Version Drift Check, Physical File Integrity, Judicial Authorization Workflow, Sec 228A IPC Victim Record | Document upload/version; court-order attach/approve; audit log and Officer Directory; victim-record POST. |
-| Court Officer | All pages except Officer Directory, including Tamper-Evident Audit Ledger | Officer Directory; only Admin can manage users. |
-| Admin | All pages, including Officer Directory | Production tamper simulation remains blocked unless ENABLE_TAMPER_TESTS=true. |
+| IO | Upload/view TC1 documents | Approving unseal requests |
+| FORENSIC_EXPERT | View TC1, upload forensic report versions | Seeing unredacted victim record |
+| PROSECUTOR | View TC1 documents (read-only) | Uploading new documents |
+| COURT_OFFICER | Approve/reject unseal requests, see unredacted victim record | Uploading investigation documents |
+| ADMIN | Everything above | Unauthenticated access must still be blocked |
 
-Hidden buttons are not the security boundary. Test copied API requests and record HTTP status. The server enforces case assignment, WRITE access, SEALED access, court-only order actions, audit role access, and victim-record permissions.
+## Real API Results
 
-## Where to Test in the App
+These results were obtained against a clean local Express server using the real login and API routes, with the automatic TC1 initializer enabled. HTTP status values are from the actual requests.
 
-After login, select the TC1 case in Case Dossier.
-- View a document hash: Case Dossier -> Current SHA-256 Digest, or Version Drift Check -> version details.
-- Trigger integrity verification: Case Dossier -> document Actions -> Verify Integrity, or Physical File Integrity.
-- View the audit log: Tamper-Evident Audit Ledger (Court Officer/Admin only).
-- Submit/approve unseal: Judicial Authorization Workflow. Requesting user submits; Court Officer/Admin attaches and approves.
-- View a victim record: Sec 228A IPC Victim Record.
+| Role/action | Observed result | Expected result | Status |
+|---|---|---|---|
+| IO views TC1 documents | Document list returned | Allowed | `200` |
+| IO attempts unseal approval | Server denied route by role middleware | Blocked | `403` |
+| FORENSIC_EXPERT uploads a forensic report version | Version upload accepted | Allowed | `200` |
+| FORENSIC_EXPERT views victim record | `redacted: true`; victim name masked | Blocked from unredacted data | PASS |
+| PROSECUTOR views TC1 documents | Document list returned | Allowed | `200` |
+| PROSECUTOR uploads a new document version | Server denied WRITE operation | Blocked | `403` |
+| COURT_OFFICER uploads an investigation document version | Server denied because no case WRITE assignment | Blocked | `403` |
+| COURT_OFFICER views victim record | `redacted: false` | Allowed unredacted access | PASS |
+| ADMIN views the audit ledger | Audit log returned | Allowed | `200` |
+| No authentication requests the cases route | Server rejected request | Blocked | `401` |
 
-## Important Test Order
+The real local test identifiers were:
 
-1. Verify the original tamper hash and record PASS before editing the physical file.
-2. Edit exactly one character outside the app and verify again for FAIL.
-3. Compare v1->v2, then v2->v3.
-4. Test sealed denial, then submit and approve an order, then test access again.
-5. Check victim redaction with all five roles.
-6. Check the audit ledger and verify its hash chain as Court Officer/Admin.
+- Case ID: `4c33b7a7-3aa3-4b1e-99b2-9a9a6235467f`
+- Document ID: `e547749b-847e-4670-ad3a-599722c8a76a`
+
+The Render deployment will have different generated IDs, but the same routes and role rules.
+
+## Manual Tamper Test
+
+1. Log in as IO, Forensic Expert, Prosecutor, Court Officer, or Admin.
+2. Open **Case Dossier** and select `TC1`.
+3. Open **Physical File Integrity** or choose the document's **Verify Integrity** action.
+4. First record the original stored hash and confirm the unmodified file passes.
+5. Open the physical file directly and change exactly one character, for example `0.02%` to `0.03%`.
+6. Save the file outside the application.
+7. Run Verify Integrity again.
+
+Expected result: the stored SHA-256 remains `4fb462f11d5dc6514d52de2d10c1a492215f9137884675527ff11b0aa46684ef`, the actual hash differs, and integrity reports FAIL/tamper detected. This fixture leaves the file untouched until you perform this manual edit.
+
+## App Page and URL
+
+The application uses a single-page interface. After deployment, open the Render service URL, log in, select **Case Dossier**, and select TC1.
+
+Integrity page: the **Physical File Integrity** navigation page, or the document's **Verify Integrity** action in Case Dossier.
+
+The API endpoint used by that page is:
+
+`GET https://YOUR-RENDER-SERVICE.onrender.com/api/documents/<DOCUMENT_ID>/verify-file`
+
+The document hash is also shown in **Case Dossier** under **Current SHA-256 Digest**.
+
+## Render Deployment
+
+The fixture is enabled in the Docker image and Render blueprint with `ENABLE_TC1_DATASET=true`. Deploy commit `02978a8` or a later commit. On first startup, the application creates the database record and one physical upload on the persistent `/var/data` disk. On later restarts, it detects the existing FIR and does not duplicate the case or file.
