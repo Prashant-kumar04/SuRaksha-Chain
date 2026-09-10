@@ -103,3 +103,5 @@ The generated files are deliberately left available for manual workflow testing.
 ## Security Notes and Limitations
 
 Document integrity uses SHA-256 comparison. The audit ledger is tamper-evident and hash-chained, not absolutely immutable. Court authorization is a workflow with an attached order file; cryptographic court-signature verification is not implemented. Textual drift analysis supports plain-text formats; semantic PDF/DOCX/OCR analysis is not provided.
+
+# SuRaksha-Chain
