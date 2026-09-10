@@ -104,6 +104,7 @@ export async function initDatabase(): Promise<BetterSqliteWrapper> {
 
   // Schema creation
   wrapper.exec(
+    `
 CREATE TABLE IF NOT EXISTS users (
   user_id       TEXT PRIMARY KEY,
   name          TEXT NOT NULL,
@@ -209,17 +210,17 @@ CREATE TABLE IF NOT EXISTS victim_records (
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_case_assignments_case_user
   ON case_assignments(case_id, user_id);
-  );
+    `);
 
   // Safe schema migrations for existing databases
   try {
-    wrapper.exec(ALTER TABLE users ADD COLUMN badge_number TEXT;);
+    wrapper.exec(`ALTER TABLE users ADD COLUMN badge_number TEXT;`);
   } catch (_e) {
     // Column may already exist
   }
 
   try {
-    wrapper.exec(ALTER TABLE document_versions ADD COLUMN file_size INTEGER DEFAULT 0;);
+    wrapper.exec(`ALTER TABLE document_versions ADD COLUMN file_size INTEGER DEFAULT 0;`);
   } catch (_e) {
     // Column may already exist
   }
