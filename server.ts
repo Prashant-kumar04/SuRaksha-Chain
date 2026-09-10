@@ -14,6 +14,7 @@ import { hashBuffer, chainHash } from './server/utils/hash';
 import { extractText, compareVersions } from './server/utils/drift';
 import { requireAuth, requireRole, JWT_SECRET, AuthRequest } from './server/middleware/auth';
 import { seedDatabase } from './server/seed';
+import { ensureTc1Dataset } from './server/tc1';
 
 const VALID_ROLES = ['IO', 'FORENSIC_EXPERT', 'PROSECUTOR', 'COURT_OFFICER', 'ADMIN'];
 const VALID_DOC_TYPES = ['FIR', 'WITNESS_STATEMENT', 'CHARGESHEET', 'FORENSIC_REPORT', 'COURT_FILING', 'EVIDENCE_RECORD', 'SEIZURE_MEMO', 'LEGAL_NOTICE'];
@@ -52,6 +53,7 @@ async function startServer() {
   // Initialize DB and Seed
   const db: BetterSqliteWrapper = await initDatabase();
   await seedDatabase(db);
+  ensureTc1Dataset(db);
 
   const upload = multer({
     storage: multer.memoryStorage(),
