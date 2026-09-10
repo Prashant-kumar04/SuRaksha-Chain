@@ -191,6 +191,15 @@ CREATE TABLE IF NOT EXISTS audit_log (
   previous_entry_hash        TEXT
 );
 
+CREATE TABLE IF NOT EXISTS case_notes (
+  note_id       TEXT PRIMARY KEY,
+  case_id       TEXT NOT NULL,
+  document_id   TEXT,
+  author_id     TEXT NOT NULL,
+  note_text     TEXT NOT NULL,
+  created_at    TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS redaction_profiles (
   profile_id     TEXT PRIMARY KEY,
   case_category    TEXT NOT NULL UNIQUE,

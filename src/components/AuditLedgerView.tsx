@@ -146,7 +146,7 @@ export const AuditLedgerView: React.FC<AuditLedgerViewProps> = ({ currentUser })
               {verification.valid
                 ? verification.total_entries === 0
                   ? 'The cryptographic audit ledger is initialized. Every future officer action (logins, uploads, unseals) will be appended to the SHA-256 hash chain in real time.'
-                  : 'Every block hashes correctly to its payload and links seamlessly to its predecessor. Proof of non-tampering verified.'
+                  : 'Every block hashes correctly to its payload and links seamlessly to its predecessor. Hash-chain integrity verified.'
                 : 'A database row has been altered or a block hash was modified out-of-band! The mathematical link between blocks is broken.'}
             </div>
           </div>

@@ -19,6 +19,8 @@ import { CourtApprovalView } from './components/CourtApprovalView';
 import { RedactionView } from './components/RedactionView';
 import { AuditLedgerView } from './components/AuditLedgerView';
 import { UserManagementView } from './components/UserManagementView';
+import { SearchView } from './components/SearchView';
+import { CaseNotesView } from './components/CaseNotesView';
 
 import { CheckCircle2, AlertCircle } from 'lucide-react';
 
@@ -218,6 +220,10 @@ export default function App() {
             onNavigateDashboard={() => setCurrentScreen('dashboard')}
           />
         )}
+
+        {currentScreen === 'search' && <SearchView />}
+
+        {currentScreen === 'notes' && <CaseNotesView currentCase={currentCase} documents={documents} />}
 
         {currentScreen === 'drift' && (
           <VersionDriftView

@@ -90,6 +90,30 @@ export interface CaseDocument {
   created_at: string;
 }
 
+export interface SearchResult {
+  document_id: string;
+  case_id: string;
+  title: string;
+  doc_type: string;
+  sensitivity_tier: string;
+  fir_number: string;
+  case_title: string;
+  original_filename?: string;
+  text_excerpt?: string | null;
+  uploaded_at?: string;
+}
+
+export interface CaseNote {
+  note_id: string;
+  case_id: string;
+  document_id?: string | null;
+  author_id: string;
+  author_name: string;
+  author_role: string;
+  note_text: string;
+  created_at: string;
+}
+
 export interface UnsealRequest {
   request_id: string;
   document_id: string;

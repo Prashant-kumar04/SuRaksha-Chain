@@ -8,6 +8,8 @@ import {
   EyeOff,
   Binary,
   Users,
+  Search,
+  MessageSquare,
 } from 'lucide-react';
 import { UserRole } from '../types';
 
@@ -19,7 +21,9 @@ export type ScreenId =
   | 'court'
   | 'redaction'
   | 'ledger'
-  | 'users';
+  | 'users'
+  | 'search'
+  | 'notes';
 
 interface StepNavProps {
   currentScreen: ScreenId;
@@ -50,6 +54,20 @@ export const StepNav: React.FC<StepNavProps> = ({
       label: 'Document Upload',
       icon: UploadCloud,
       roles: ['IO', 'FORENSIC_EXPERT', 'COURT_OFFICER', 'ADMIN'],
+    },
+    {
+      id: 'search' as ScreenId,
+      stepNumber: 3,
+      label: 'Document Search',
+      icon: Search,
+      roles: ['IO', 'FORENSIC_EXPERT', 'PROSECUTOR', 'COURT_OFFICER', 'ADMIN'],
+    },
+    {
+      id: 'notes' as ScreenId,
+      stepNumber: 4,
+      label: 'Case Activity',
+      icon: MessageSquare,
+      roles: ['IO', 'FORENSIC_EXPERT', 'PROSECUTOR', 'COURT_OFFICER', 'ADMIN'],
     },
     {
       id: 'drift' as ScreenId,

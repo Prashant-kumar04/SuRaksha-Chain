@@ -9,6 +9,8 @@ import {
   AuditVerificationResult,
   FileIntegrityResult,
   DiffResult,
+  SearchResult,
+  CaseNote,
 } from './types';
 
 const configuredApiUrl = import.meta.env.VITE_API_URL?.trim().replace(/\/$/, '');
@@ -162,6 +164,21 @@ export const api = {
     return request<CaseDocument[]>(`/cases/${caseId}/documents`);
   },
 
+  async searchDocuments(query: string): Promise<SearchResult[]> {
+    return request<SearchResult[]>(`/search?q=${encodeURIComponent(query)}`);
+  },
+
+  async getCaseNotes(caseId: string): Promise<CaseNote[]> {
+    return request<CaseNote[]>(`/cases/${caseId}/notes`);
+  },
+
+  async addCaseNote(caseId: string, note_text: string, document_id?: string): Promise<{ note_id: string }> {
+    return request<{ note_id: string }>(`/cases/${caseId}/notes`, {
+      method: 'POST',
+      body: JSON.stringify({ note_text, document_id: document_id || null }),
+    });
+  },
+
   // Documents & Versions
   async uploadDocument(formData: FormData): Promise<{ document_id: string; version_id: string; file_hash: string }> {
     return request<{ document_id: string; version_id: string; file_hash: string }>('/documents/upload', {
@@ -193,6 +210,15 @@ export const api = {
       const err = await res.json().catch(() => ({ error: 'Download failed' }));
       throw new Error(err.error || 'Failed to download document file');
     }
+    return res.blob();
+  },
+
+  async downloadSection65BCertificate(documentId: string): Promise<Blob> {
+    const token = getAuthToken();
+    const headers = new Headers();
+    if (token) headers.set('Authorization', `Bearer ${token}`);
+    const res = await fetch(`${API_BASE}/documents/${documentId}/section-65b-certificate`, { headers });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({ error: 'Certificate generation failed' }))).error);
     return res.blob();
   },
 

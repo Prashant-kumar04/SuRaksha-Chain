@@ -356,6 +356,58 @@ async function startServer() {
     }));
   });
 
+  app.get('/api/search', requireAuth, (req: AuthRequest, res) => {
+    const query = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    if (!query) return res.json([]);
+    const pattern = `%${query}%`;
+    const elevated = ['ADMIN', 'COURT_OFFICER'].includes(req.user!.role);
+    const rows = elevated
+      ? db.prepare(`SELECT d.document_id, d.case_id, d.title, d.doc_type, d.sensitivity_tier, c.fir_number, c.case_title,
+          v.original_filename, v.text_excerpt, v.uploaded_at
+          FROM documents d JOIN cases c ON c.case_id = d.case_id
+          LEFT JOIN document_versions v ON v.version_id = d.current_version_id
+          WHERE d.title LIKE ? OR d.doc_type LIKE ? OR v.text_excerpt LIKE ?
+          ORDER BY d.created_at DESC`).all(pattern, pattern, pattern)
+      : db.prepare(`SELECT d.document_id, d.case_id, d.title, d.doc_type, d.sensitivity_tier, c.fir_number, c.case_title,
+          v.original_filename, v.text_excerpt, v.uploaded_at
+          FROM documents d JOIN cases c ON c.case_id = d.case_id
+          JOIN case_assignments ca ON ca.case_id = d.case_id
+          LEFT JOIN document_versions v ON v.version_id = d.current_version_id
+          WHERE ca.user_id = ? AND (ca.expires_at IS NULL OR ca.expires_at > datetime('now'))
+            AND (d.title LIKE ? OR d.doc_type LIKE ? OR v.text_excerpt LIKE ?)
+          ORDER BY d.created_at DESC`).all(req.user!.user_id, pattern, pattern, pattern);
+    res.json(rows.map((row: any) => canViewSealedContent(req.user, row) ? row : { ...row, text_excerpt: null }));
+  });
+
+  app.get('/api/cases/:id/notes', requireAuth, (req: AuthRequest, res) => {
+    const case_id = req.params.id;
+    if (!userCanAccessCase(req.user, case_id)) return res.status(403).json({ error: 'You are not assigned to this case.' });
+    const notes = db.prepare(`SELECT n.*, u.name AS author_name, u.role AS author_role
+      FROM case_notes n JOIN users u ON u.user_id = n.author_id
+      WHERE n.case_id = ? ORDER BY n.created_at DESC`).all(case_id);
+    res.json(notes);
+  });
+
+  app.post('/api/cases/:id/notes', requireAuth, (req: AuthRequest, res) => {
+    const case_id = req.params.id;
+    if (!userCanAccessCase(req.user, case_id)) {
+      writeAudit({ actor_id: req.user!.user_id, action: 'ACCESS_DENIED', case_id, detail: 'Attempted to add case note without case access' });
+      return res.status(403).json({ error: 'You are not assigned to this case.' });
+    }
+    const note_text = typeof req.body.note_text === 'string' ? req.body.note_text.trim() : '';
+    const document_id = typeof req.body.document_id === 'string' && req.body.document_id ? req.body.document_id : null;
+    if (!note_text || note_text.length > 4000) return res.status(400).json({ error: 'note_text is required and must be 1-4000 characters.' });
+    if (document_id) {
+      const doc = db.prepare('SELECT case_id FROM documents WHERE document_id = ?').get(document_id);
+      if (!doc || doc.case_id !== case_id) return res.status(400).json({ error: 'Document does not belong to this case.' });
+    }
+    const note_id = randomUUID();
+    db.prepare('INSERT INTO case_notes (note_id, case_id, document_id, author_id, note_text) VALUES (?,?,?,?,?)')
+      .run(note_id, case_id, document_id, req.user!.user_id, note_text);
+    writeAudit({ actor_id: req.user!.user_id, action: 'CASE_NOTE_ADDED', case_id, document_id, detail: `Case note added: ${note_text.slice(0, 160)}` });
+    res.json({ note_id });
+  });
+
   // =====================================================================
   // DOCUMENT UPLOAD, VERSIONING & SECURE DOWNLOAD
   // =====================================================================
@@ -536,6 +588,32 @@ async function startServer() {
     } catch (err: any) {
       return res.status(400).json({ error: err.message || 'File access error.' });
     }
+  });
+
+  app.get('/api/documents/:id/section-65b-certificate', requireAuth, (req: AuthRequest, res) => {
+    const document_id = req.params.id;
+    const row = db.prepare(`SELECT d.*, v.file_hash, v.original_filename, v.uploaded_at, u.name AS uploader_name, u.email AS uploader_email
+      FROM documents d JOIN document_versions v ON v.version_id = d.current_version_id
+      LEFT JOIN users u ON u.user_id = v.uploaded_by WHERE d.document_id = ?`).get(document_id);
+    if (!row) return res.status(404).json({ error: 'Document not found.' });
+    if (!userCanAccessCase(req.user, row.case_id)) return res.status(403).json({ error: 'You are not assigned to this case.' });
+    if (!canViewSealedContent(req.user, row)) return res.status(403).json({ error: 'Document content is SEALED pending judicial authorization.' });
+    writeAudit({ actor_id: req.user!.user_id, action: 'SECTION_65B_CERTIFICATE_GENERATED', document_id, case_id: row.case_id, detail: `Generated certificate for SHA-256 ${row.file_hash}` });
+    const certificate = [
+      'SECTION 65B ELECTRONIC RECORD CERTIFICATE',
+      '==========================================',
+      `Document title: ${row.title}`,
+      `Original filename: ${row.original_filename || 'Not recorded'}`,
+      `SHA-256 hash: ${row.file_hash}`,
+      `Upload timestamp: ${row.uploaded_at}`,
+      `Uploader identity: ${row.uploader_name || 'Unknown'} (${row.uploader_email || 'Unknown'})`,
+      '',
+      'DECLARATION',
+      'This certificate records the identifying particulars of the electronic record stored in the SuRakSha Chain registry. The record was produced from the information system in the ordinary course of activity, and the system was operating properly at the relevant time. The SHA-256 value above is the hash recorded for the uploaded version.',
+      '',
+      'This is a structured evidence record and not legal advice. Its use and sufficiency should be assessed by the appropriate legal authority.',
+    ].join('\n');
+    res.type('text/plain').setHeader('Content-Disposition', `attachment; filename="${document_id}-section-65b-certificate.txt"`).send(certificate);
   });
 
   app.get('/api/documents/:id/diff', requireAuth, (req: AuthRequest, res) => {
