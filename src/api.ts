@@ -166,6 +166,19 @@ export const api = {
     });
   },
 
+  async getCaseAssignments(caseId: string): Promise<Array<{
+    assignment_id: string;
+    case_id: string;
+    user_id: string;
+    access_level: 'READ' | 'WRITE';
+    assigned_at: string;
+    name: string;
+    email: string;
+    role: string;
+  }>> {
+    return request(`/cases/${caseId}/assignments`);
+  },
+
   async getCaseDocuments(caseId: string): Promise<CaseDocument[]> {
     return request<CaseDocument[]>(`/cases/${caseId}/documents`);
   },

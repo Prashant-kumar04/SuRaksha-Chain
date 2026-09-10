@@ -15,6 +15,14 @@ interface LocalAssignment {
   accessLevel: 'READ' | 'WRITE';
 }
 
+const roleLabels: Record<string, string> = {
+  IO: 'Investigating Officers',
+  FORENSIC_EXPERT: 'Forensic Scientists',
+  PROSECUTOR: 'Public Prosecutors',
+  COURT_OFFICER: 'Judicial / Court Officers',
+  ADMIN: 'Administrators',
+};
+
 export const CaseAccessManager: React.FC<CaseAccessManagerProps> = ({ caseId, caseOwnerId, currentUser }) => {
   const canManageAccess = currentUser.role === 'ADMIN' || (currentUser.role === 'IO' && caseOwnerId === currentUser.user_id);
   const [users, setUsers] = useState<User[]>([]);
@@ -30,18 +38,24 @@ export const CaseAccessManager: React.FC<CaseAccessManagerProps> = ({ caseId, ca
   useEffect(() => {
     if (!canManageAccess) return;
     setLoadingUsers(true);
-    api.getUsers()
-      .then((availableUsers) => {
+    Promise.all([
+      api.getCaseAssignments(caseId),
+      currentUser.role === 'ADMIN' ? api.getUsers() : Promise.resolve([] as User[]),
+    ])
+      .then(([existingAssignments, availableUsers]) => {
+        setAssignments(existingAssignments.map((assignment) => ({
+          userId: assignment.user_id,
+          userName: assignment.name,
+          accessLevel: assignment.access_level,
+        })));
         setUsers(availableUsers);
         setSelectedUserId(availableUsers[0]?.user_id || '');
       })
       .catch(() => {
+        setAssignments([]);
         setUsers([]);
       })
-      .finally(() => {
-        setLoadingUsers(false);
-        setAssignments([]);
-      });
+      .finally(() => setLoadingUsers(false));
   }, [canManageAccess, caseId]);
 
   if (!canManageAccess || !caseId) return null;
@@ -99,11 +113,19 @@ export const CaseAccessManager: React.FC<CaseAccessManagerProps> = ({ caseId, ca
                 disabled={loadingUsers || submitting}
                 className="w-full px-3 py-2 text-xs bg-white border border-[#DDD9D1] rounded-[3px] focus:outline-none focus:border-[#0A2540]"
               >
-                {users.map((user) => (
-                  <option key={user.user_id} value={user.user_id}>
-                    {user.name} ({user.role})
-                  </option>
-                ))}
+                {Object.entries(roleLabels).map(([role, label]) => {
+                  const roleUsers = users.filter((user) => user.role === role);
+                  if (roleUsers.length === 0) return null;
+                  return (
+                    <optgroup key={role} label={label}>
+                      {roleUsers.map((user) => (
+                        <option key={user.user_id} value={user.user_id}>
+                          {user.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  );
+                })}
               </select>
             ) : (
               <input

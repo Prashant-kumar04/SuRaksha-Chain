@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, Case, CaseDocument, UnsealRequest } from './types';
-import { api, getStoredUser } from './api';
+import { api, getStoredUser, setStoredUser } from './api';
 
 import { LoginScreen } from './components/LoginScreen';
 import { TopBar } from './components/TopBar';
@@ -47,7 +47,10 @@ export default function App() {
   useEffect(() => {
     if (currentUser) {
       api.getMe()
-        .then((user) => setCurrentUser(user))
+        .then((user) => {
+          setStoredUser(user);
+          setCurrentUser(user);
+        })
         .catch(() => {
           api.logout();
           setCurrentUser(null);

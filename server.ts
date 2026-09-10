@@ -223,6 +223,9 @@ async function startServer() {
     if (!VALID_ROLES.includes(role)) return res.status(400).json({ error: 'Invalid user role.' });
     const existing = db.prepare('SELECT 1 FROM users WHERE email = ?').get(email);
     if (existing) return res.status(400).json({ error: 'User with this email already exists.' });
+    if (role === 'ADMIN' && db.prepare('SELECT 1 FROM users WHERE role = ? AND is_active = 1 LIMIT 1').get('ADMIN')) {
+      return res.status(409).json({ error: 'Only one active Administrator account is permitted.' });
+    }
 
     const user_id = randomUUID();
     const hash = bcrypt.hashSync(password, 10);
@@ -299,12 +302,12 @@ async function startServer() {
     const kase = db.prepare('SELECT * FROM cases WHERE case_id = ?').get(case_id);
     if (!kase) return res.status(404).json({ error: 'Case not found.' });
 
-    // IDOR & Authorization check: Only Admin or assigned IO may assign officers
+    // Only Admin or the IO who owns the case may manage assignments.
     if (!['ADMIN', 'IO'].includes(req.user!.role)) {
       return res.status(403).json({ error: 'Only Administrators and Investigating Officers may manage case assignments.' });
     }
-    if (req.user!.role === 'IO' && !userCanAccessCase(req.user, case_id)) {
-      return res.status(403).json({ error: 'You can only assign officers to cases you are assigned to.' });
+    if (req.user!.role === 'IO' && kase.created_by !== req.user!.user_id) {
+      return res.status(403).json({ error: 'You can only manage assignments for cases you own.' });
     }
 
     const { user_id, access_level } = req.body;
@@ -329,6 +332,24 @@ async function startServer() {
     });
 
     res.json({ ok: true });
+  });
+
+  app.get('/api/cases/:id/assignments', requireAuth, (req: AuthRequest, res) => {
+    const case_id = req.params.id;
+    const kase = db.prepare('SELECT created_by FROM cases WHERE case_id = ?').get(case_id);
+    if (!kase) return res.status(404).json({ error: 'Case not found.' });
+    const isManager = req.user!.role === 'ADMIN' || (req.user!.role === 'IO' && kase.created_by === req.user!.user_id);
+    if (!isManager) return res.status(403).json({ error: 'Only Administrators and the case-owning IO may view assignments.' });
+
+    const assignments = db.prepare(`
+      SELECT ca.assignment_id, ca.case_id, ca.user_id, ca.access_level, ca.assigned_at,
+             u.name, u.email, u.role
+      FROM case_assignments ca
+      JOIN users u ON u.user_id = ca.user_id
+      WHERE ca.case_id = ?
+      ORDER BY ca.assigned_at ASC, ca.rowid ASC
+    `).all(case_id);
+    res.json(assignments);
   });
 
   app.delete('/api/cases/:id', requireAuth, requireRole('ADMIN'), (req: AuthRequest, res) => {
@@ -450,8 +471,8 @@ async function startServer() {
 
       // IDOR & Authorization check
       if (!userCanWriteCase(req.user, case_id)) {
-        writeAudit({ actor_id: req.user!.user_id, action: 'ACCESS_DENIED', case_id, detail: 'Attempted to upload document without case assignment' });
-        return res.status(403).json({ error: 'You are not assigned to this case.' });
+        writeAudit({ actor_id: req.user!.user_id, action: 'ACCESS_DENIED', case_id, detail: 'Attempted to upload document without WRITE access' });
+        return res.status(403).json({ error: 'You have READ access to this case, but WRITE access is required for uploads.' });
       }
 
       const file_hash = hashBuffer(req.file.buffer);
@@ -500,8 +521,8 @@ async function startServer() {
 
       // IDOR & Authorization check
       if (!userCanWriteCase(req.user, doc.case_id)) {
-        writeAudit({ actor_id: req.user!.user_id, action: 'ACCESS_DENIED', document_id, case_id: doc.case_id, detail: 'Attempted to upload version without case assignment' });
-        return res.status(403).json({ error: 'You are not assigned to this case.' });
+        writeAudit({ actor_id: req.user!.user_id, action: 'ACCESS_DENIED', document_id, case_id: doc.case_id, detail: 'Attempted to upload version without WRITE access' });
+        return res.status(403).json({ error: 'You have READ access to this case, but WRITE access is required for version uploads.' });
       }
       if (!req.file) return res.status(400).json({ error: 'No file received.' });
 

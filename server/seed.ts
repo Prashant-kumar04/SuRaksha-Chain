@@ -3,11 +3,11 @@ import { randomUUID } from 'crypto';
 import { BetterSqliteWrapper } from './db';
 
 export const BOOTSTRAP_USERS = [
-  { name: 'Suresh Nair', email: 'admin@suraksha.gov.in', role: 'ADMIN', department: 'State Police IT Cell', jurisdiction: 'State HQ', badge_number: 'ADM-001' },
-  { name: 'Rakesh Kumar', email: 'io@suraksha.gov.in', role: 'IO', department: 'Crime Branch', jurisdiction: 'District East', badge_number: 'IO-5821' },
-  { name: 'Dr. Anjali Menon', email: 'forensic@suraksha.gov.in', role: 'FORENSIC_EXPERT', department: 'FSL District Lab', jurisdiction: 'District East', badge_number: 'FE-2291' },
-  { name: 'Adv. Priya Sharma', email: 'prosecutor@suraksha.gov.in', role: 'PROSECUTOR', department: "Directorate of Prosecution", jurisdiction: 'District East', badge_number: 'PP-1044' },
-  { name: 'Justice R. Iyer', email: 'court@suraksha.gov.in', role: 'COURT_OFFICER', department: 'District Court Bench', jurisdiction: 'District East', badge_number: 'JM-0082' },
+  { name: 'System Administrator', email: 'admin@suraksha.gov.in', role: 'ADMIN', department: 'State Police IT Cell', jurisdiction: 'State HQ', badge_number: 'ADM-001' },
+  { name: 'Investigating Officer', email: 'io@suraksha.gov.in', role: 'IO', department: 'Crime Branch', jurisdiction: 'District East', badge_number: 'IO-5821' },
+  { name: 'Forensic Scientist', email: 'forensic@suraksha.gov.in', role: 'FORENSIC_EXPERT', department: 'FSL District Lab', jurisdiction: 'District East', badge_number: 'FE-2291' },
+  { name: 'Public Prosecutor', email: 'prosecutor@suraksha.gov.in', role: 'PROSECUTOR', department: "Directorate of Prosecution", jurisdiction: 'District East', badge_number: 'PP-1044' },
+  { name: 'Judicial Magistrate / Registrar', email: 'court@suraksha.gov.in', role: 'COURT_OFFICER', department: 'District Court Bench', jurisdiction: 'District East', badge_number: 'JM-0082' },
 ];
 
 export function getBootstrapPassword(): string {
@@ -51,6 +51,11 @@ export async function seedDatabase(db: BetterSqliteWrapper) {
       const hash = bcrypt.hashSync(initialPassword, 10);
       insertUser.run(id, u.name, u.email, hash, u.role, u.department, u.jurisdiction, u.badge_number);
     }
+  }
+
+  for (const user of BOOTSTRAP_USERS) {
+    db.prepare('UPDATE users SET name = ?, role = ?, department = ?, jurisdiction = ?, badge_number = ? WHERE email = ?')
+      .run(user.name, user.role, user.department, user.jurisdiction, user.badge_number, user.email);
   }
 
   // NOTE: Zero preloaded cases, documents, versions, victim records, or fake audit events!

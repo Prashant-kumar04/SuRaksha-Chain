@@ -180,7 +180,6 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({ currentU
                     <option value="FORENSIC_EXPERT">FORENSIC_EXPERT (FSL Scientist)</option>
                     <option value="PROSECUTOR">PROSECUTOR (Public Prosecutor)</option>
                     <option value="COURT_OFFICER">COURT_OFFICER (Judicial Magistrate / Registrar)</option>
-                    <option value="ADMIN">ADMIN (System Administrator)</option>
                   </select>
                 </div>
 
