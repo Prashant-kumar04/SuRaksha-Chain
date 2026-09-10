@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Case, CaseDocument, User } from '../types';
 import { api } from '../api';
+import { CaseAccessManager } from './CaseAccessManager';
 import {
   FolderPlus,
   FileText,
@@ -335,6 +336,10 @@ export const CaseDashboard: React.FC<CaseDashboardProps> = ({
           </div>
         )}
       </div>
+
+      {currentCase && (
+        <CaseAccessManager caseId={currentCase.case_id} caseOwnerId={currentCase.created_by} currentUser={currentUser} />
+      )}
 
       {/* Create Case Modal */}
       {showCreateModal && (
