@@ -196,6 +196,27 @@ export const CaseDashboard: React.FC<CaseDashboardProps> = ({
             <Plus className="w-3.5 h-3.5" />
             <span>Upload Document</span>
           </button>
+          {currentCase && currentUser.role === 'ADMIN' && (
+            <button
+              onClick={handleDeleteCase}
+              disabled={deleting}
+              title="Permanently delete this case and its records"
+              className="px-3 py-2 bg-white hover:bg-[#FBEEEE] border border-[#8C1D2B]/40 text-[#8C1D2B] text-xs font-semibold rounded-[3px] flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>{deleting ? 'Deleting...' : 'Delete Case'}</span>
+            </button>
+          )}
+          {currentCase && (currentUser.role === 'ADMIN' || (currentUser.role === 'IO' && currentCase.created_by === currentUser.user_id)) && (
+            <button
+              onClick={openEditModal}
+              title="Edit case details"
+              className="px-3 py-2 bg-white hover:bg-[#F7F6F3] border border-[#DDD9D1] text-[#0A2540] text-xs font-semibold rounded-[3px] flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              <span>Edit Case</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -278,27 +299,6 @@ export const CaseDashboard: React.FC<CaseDashboardProps> = ({
               <Plus className="w-3.5 h-3.5" />
               <span>Upload First Document</span>
             </button>
-          {currentCase && currentUser.role === 'ADMIN' && (
-            <button
-              onClick={handleDeleteCase}
-              disabled={deleting}
-              title="Permanently delete this case and its records"
-              className="px-3 py-2 bg-white hover:bg-[#FBEEEE] border border-[#8C1D2B]/40 text-[#8C1D2B] text-xs font-semibold rounded-[3px] flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>{deleting ? 'Deleting...' : 'Delete Case'}</span>
-            </button>
-          )}
-          {currentCase && (currentUser.role === 'ADMIN' || (currentUser.role === 'IO' && currentCase.created_by === currentUser.user_id)) && (
-            <button
-              onClick={openEditModal}
-              title="Edit case details"
-              className="px-3 py-2 bg-white hover:bg-[#F7F6F3] border border-[#DDD9D1] text-[#0A2540] text-xs font-semibold rounded-[3px] flex items-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <Pencil className="w-3.5 h-3.5" />
-              <span>Edit Case</span>
-            </button>
-          )}
           </div>
         ) : (
           <div className="overflow-x-auto">
