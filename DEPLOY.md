@@ -14,10 +14,12 @@ React + Vite              Express + sql.js + /var/data/suraksha.db
 1. Go to https://render.com and create a free account
 2. Click **New → Web Service**
 3. Connect your GitHub repo
-4. Render will auto-detect ender.yaml — click **Apply**
+4. Render will auto-detect 
+ender.yaml — click **Apply**
 5. Set these environment variables in the Render dashboard:
    - APP_URL = https://suraksha-chain.onrender.com (your Render URL)
    - CORS_ORIGINS = https://your-app.netlify.app (your Netlify URL — add after step 3)
+   - JWT_SECRET = generate a unique random value of at least 32 characters (use Render's Generate Value option)
    - BOOTSTRAP_PASSWORD = any strong password (for demo accounts)
 6. Click **Deploy** — wait for it to go live
 7. **Copy your Render URL** (e.g. https://suraksha-chain.onrender.com)
@@ -76,5 +78,6 @@ pm run build:client
 |---|---|
 | "Cannot reach the API at /api" | Set VITE_API_URL in Netlify dashboard → redeploy |
 | CORS error in browser console | Set CORS_ORIGINS in Render to your exact Netlify URL |
+| CRITICAL SECURITY CONFIGURATION: production JWT_SECRET | In Render → Environment, set JWT_SECRET to a generated random value of at least 32 characters, save, and redeploy |
 | Login fails | Check BOOTSTRAP_PASSWORD is set in Render env vars |
 | Data lost on restart | Make sure Render disk is mounted at /var/data |
