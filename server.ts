@@ -6,7 +6,7 @@ import fs from 'fs';
 import multer from 'multer';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { randomUUID, timingSafeEqual } from 'crypto';
+import { randomUUID } from 'crypto';
 import { createServer as createViteServer } from 'vite';
 
 import { initDatabase, BetterSqliteWrapper } from './server/db';
@@ -14,7 +14,6 @@ import { hashBuffer, chainHash } from './server/utils/hash';
 import { extractText, compareVersions } from './server/utils/drift';
 import { requireAuth, requireRole, JWT_SECRET, AuthRequest } from './server/middleware/auth';
 import { seedDatabase } from './server/seed';
-import { runFinalSeed } from './server/finalSeed';
 
 const VALID_ROLES = ['IO', 'FORENSIC_EXPERT', 'PROSECUTOR', 'COURT_OFFICER', 'ADMIN'];
 const VALID_DOC_TYPES = ['FIR', 'WITNESS_STATEMENT', 'CHARGESHEET', 'FORENSIC_REPORT', 'COURT_FILING', 'EVIDENCE_RECORD', 'SEIZURE_MEMO', 'LEGAL_NOTICE'];
@@ -63,23 +62,6 @@ async function startServer() {
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
   }
-
-  app.post('/api/admin/run-final-seed', requireAuth, requireRole('ADMIN'), (req: AuthRequest, res) => {
-    const configuredSecret = process.env.SEED_TRIGGER_SECRET;
-    const suppliedSecret = req.header('X-Seed-Trigger-Secret');
-    if (!configuredSecret) return res.status(503).json({ error: 'Final seed trigger is not configured.' });
-    const suppliedBytes = suppliedSecret ? Buffer.from(suppliedSecret) : null;
-    const configuredBytes = Buffer.from(configuredSecret);
-    if (!suppliedBytes || suppliedBytes.length !== configuredBytes.length || !timingSafeEqual(suppliedBytes, configuredBytes)) {
-      return res.status(403).json({ error: 'Invalid seed trigger secret.' });
-    }
-    try {
-      res.json(runFinalSeed(db, uploadsDir, req.user!.user_id));
-    } catch (err: any) {
-      const alreadySeeded = err.message === 'Already seeded — reset marker manually to re-run.';
-      res.status(alreadySeeded ? 409 : 500).json({ error: err.message || 'Final seed failed.' });
-    }
-  });
 
   // Security Helper: Safe physical upload path generation preventing directory traversal attacks
   function getSafeUploadPath(baseDir: string, originalname: string, prefix: string): { filename: string; filePath: string } {

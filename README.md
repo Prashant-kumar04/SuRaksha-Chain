@@ -28,7 +28,6 @@ Copy `.env.example` and provide deployment-specific values. Never commit a real 
 - `VITE_API_URL`: frontend build-time URL of the backend, without a trailing slash or `/api` (for example `https://suraksha-api.example.com`). Leave unset when the frontend and backend share one origin.
 - `ENABLE_SEED_DATA`: retained for compatibility; no operational demo data is seeded.
 - `ENABLE_TAMPER_TESTS`: keep `false` in production.
-- `SEED_TRIGGER_SECRET`: optional long random secret used only for the one-time final demo seed route. Set it manually in Render; never commit it.
 
 ## Production Deployment
 
@@ -92,7 +91,7 @@ The curated three-case dataset can be created locally once with:
 npm run seed:final
 ```
 
-Production uses the protected `POST /api/admin/run-final-seed` route. Set `SEED_TRIGGER_SECRET` manually in the Render dashboard, log in as the admin account, and send the same value in the `X-Seed-Trigger-Secret` header. A persistent database marker rejects all later attempts with `409 Already seeded`. Remove the route in the deployment after confirming the production dataset; that is safer than relying on the marker alone during a live demo.
+The production dataset was seeded once through a temporary protected route, which has now been removed from the deployed application. The persistent marker remains in the database for operational history. The local seed command remains available for disposable local testing only.
 
 ## Disposable Test Dataset
 

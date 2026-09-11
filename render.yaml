@@ -27,5 +27,3 @@ services:
         sync: false
       - key: ENABLE_TAMPER_TESTS
         value: "false"
-      - key: SEED_TRIGGER_SECRET
-        sync: false
