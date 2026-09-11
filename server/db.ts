@@ -217,6 +217,12 @@ CREATE TABLE IF NOT EXISTS victim_records (
   created_at     TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS final_seed_runs (
+  seed_name      TEXT PRIMARY KEY,
+  completed_at   TEXT NOT NULL,
+  triggered_by   TEXT NOT NULL
+);
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_case_assignments_case_user
   ON case_assignments(case_id, user_id);
     `);
