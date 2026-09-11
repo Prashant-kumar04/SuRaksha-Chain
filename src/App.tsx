@@ -120,6 +120,19 @@ export default function App() {
   }, [currentUser, refreshCases, refreshUnsealRequests]);
 
   useEffect(() => {
+    const handleResourceNotFound = (event: Event) => {
+      const message = (event as CustomEvent<{ message?: string }>).detail?.message
+        || 'This case or document was deleted. Returning to the dashboard.';
+      setCurrentScreen('dashboard');
+      setActiveDriftDocId(null);
+      showNotification(message, 'ERROR');
+      refreshCases();
+    };
+    window.addEventListener('suraksha:resource-not-found', handleResourceNotFound);
+    return () => window.removeEventListener('suraksha:resource-not-found', handleResourceNotFound);
+  }, [refreshCases]);
+
+  useEffect(() => {
     if (currentCase) {
       refreshDocuments();
     }

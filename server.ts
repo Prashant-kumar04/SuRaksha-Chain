@@ -336,19 +336,21 @@ async function startServer() {
     const targetUser = db.prepare('SELECT 1 FROM users WHERE user_id = ? AND is_active = 1').get(user_id);
     if (!targetUser) return res.status(404).json({ error: 'Target user does not exist.' });
 
-    const assignmentId = randomUUID();
-    try {
-      db.prepare(`INSERT INTO case_assignments (assignment_id, case_id, user_id, access_level) VALUES (?,?,?,?)`)
-        .run(assignmentId, case_id, user_id, access_level || 'READ');
-    } catch {
-      return res.status(409).json({ error: 'User is already assigned to this case.' });
-    }
+    const requestedAccess = access_level || 'READ';
+    const existingAssignment = db.prepare('SELECT assignment_id, access_level FROM case_assignments WHERE case_id = ? AND user_id = ?')
+      .get(case_id, user_id);
+    const assignmentId = existingAssignment?.assignment_id || randomUUID();
+    db.prepare(`INSERT INTO case_assignments (assignment_id, case_id, user_id, access_level) VALUES (?,?,?,?)
+                ON CONFLICT(case_id, user_id) DO UPDATE SET access_level = excluded.access_level`)
+      .run(assignmentId, case_id, user_id, requestedAccess);
 
     writeAudit({
       actor_id: req.user!.user_id,
-      action: 'CASE_ASSIGNED',
+      action: existingAssignment ? 'CASE_ACCESS_UPDATED' : 'CASE_ASSIGNED',
       case_id,
-      detail: `Assigned user ${user_id} with access ${access_level || 'READ'}`,
+      detail: existingAssignment
+        ? `Updated user ${user_id} access from ${existingAssignment.access_level} to ${requestedAccess}`
+        : `Assigned user ${user_id} with access ${requestedAccess}`,
     });
 
     res.json({ ok: true, assignment_id: assignmentId });

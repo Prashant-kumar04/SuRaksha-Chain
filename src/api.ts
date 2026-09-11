@@ -16,6 +16,17 @@ import {
 const configuredApiUrl = import.meta.env.VITE_API_URL?.trim().replace(/\/$/, '');
 const API_BASE = configuredApiUrl ? `${configuredApiUrl}/api` : '/api';
 
+export class ApiError extends Error {
+  constructor(message: string, public readonly status: number) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+function notifyResourceNotFound(message: string): void {
+  window.dispatchEvent(new CustomEvent('suraksha:resource-not-found', { detail: { message } }));
+}
+
 export function getAuthToken(): string | null {
   return localStorage.getItem('suraksha_token');
 }
@@ -89,7 +100,8 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
   if (!response.ok) {
     const errorMsg = data.error || response.statusText || 'API request failed';
-    throw new Error(errorMsg);
+    if (response.status === 404) notifyResourceNotFound('This case or document was deleted. Returning to the dashboard.');
+    throw new ApiError(errorMsg, response.status);
   }
 
   return data as T;
@@ -251,7 +263,9 @@ export const api = {
     const res = await fetch(`${API_BASE}/documents/${documentId}/download`, { headers });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: 'Download failed' }));
-      throw new Error(err.error || 'Failed to download document file');
+      const message = err.error || 'Failed to download document file';
+      if (res.status === 404) notifyResourceNotFound('This document was deleted. Returning to the dashboard.');
+      throw new ApiError(message, res.status);
     }
     return res.blob();
   },
@@ -261,7 +275,11 @@ export const api = {
     const headers = new Headers();
     if (token) headers.set('Authorization', `Bearer ${token}`);
     const res = await fetch(`${API_BASE}/documents/${documentId}/section-65b-certificate`, { headers });
-    if (!res.ok) throw new Error((await res.json().catch(() => ({ error: 'Certificate generation failed' }))).error);
+    if (!res.ok) {
+      const message = (await res.json().catch(() => ({ error: 'Certificate generation failed' }))).error;
+      if (res.status === 404) notifyResourceNotFound('This document was deleted. Returning to the dashboard.');
+      throw new ApiError(message, res.status);
+    }
     return res.blob();
   },
 
